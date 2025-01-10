@@ -7,6 +7,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 import time
 import json
 import os
+import platform
 
 # 創建數據目錄
 DATA_DIR = "data"
@@ -15,18 +16,22 @@ if not os.path.exists(DATA_DIR):
 
 def setup_driver():
     """設置並返回 webdriver"""
-    service = Service(ChromeDriverManager().install())
+    # 檢測運行環境
+    is_mac_arm = platform.system() == 'Darwin' and platform.processor() == 'arm'
     
     options = webdriver.ChromeOptions()
     
     # 檢查是否在 Docker 環境中
     if os.path.exists('/.dockerenv'):
-        options.binary_location = "/usr/bin/chromium"  # 只在 Docker 中設置
+        options.binary_location = "/usr/bin/chromium"
+    elif is_mac_arm:
+        # Mac M1/M2/M3 特定設置
+        options.binary_location = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
     
     # 加入無頭模式設置
-    options.add_argument("--headless=new")  # 新版無頭模式
-    options.add_argument("--window-size=1920,1080")  # 設置視窗大小
-    options.add_argument('--disable-gpu')  # 無頭模式建議加入
+    options.add_argument("--headless=new")
+    options.add_argument("--window-size=1920,1080")
+    options.add_argument('--disable-gpu')
     
     # 其他設置保持不變
     options.add_argument('--disable-blink-features=AutomationControlled')
@@ -38,17 +43,24 @@ def setup_driver():
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)
     
-    driver = webdriver.Chrome(service=service, options=options)
-    
-    driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
-        'source': '''
-            Object.defineProperty(navigator, 'webdriver', {
-                get: () => undefined
-            })
-        '''
-    })
-    
-    return driver
+    try:
+        # 使用 ChromeDriverManager 自動下載對應版本的 driver
+        service = Service()
+        driver = webdriver.Chrome(service=service, options=options)
+        
+        driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
+            'source': '''
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => undefined
+                })
+            '''
+        })
+        
+        return driver
+    except Exception as e:
+        print(f"Error creating driver: {e}")
+        raise
+
 
 def get_stock_data(index_code):
     """抓取指定指數的成分股數據"""
