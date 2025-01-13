@@ -3,11 +3,16 @@ from typing import Dict, Optional, List
 import json
 import os
 
-app = FastAPI(title="Stock Index API",
-             description="提供台股指數與美股 SP500 成分股查詢服務")
+app = FastAPI(
+    title="Stock Index API",
+    description="提供台股指數與美股 SP500、NASDAQ100、道瓊斯指數成分股查詢服務"
+)
 
 # 數據目錄
 DATA_DIR = "data"
+
+# 定義美股指數列表
+US_INDICES = ["SP500", "NASDAQ100", "DOWJONES"]
 
 def load_stock_data(file_name: str) -> Dict:
     """載入股票數據"""
@@ -26,7 +31,8 @@ async def read_root():
             "/indices",
             "/stocks/{index_name}",
             "/stock/{stock_code}",
-            "/search/{company_name}"
+            "/search/{company_name}",
+            "/market/{market}"
         ]
     }
 
@@ -35,25 +41,25 @@ async def get_indices():
     """獲取所有可用的指數列表"""
     indices = {
         "TW": ["0050", "0100"],
-        "US": ["SP500"]
+        "US": US_INDICES
     }
     return {"indices": indices}
 
 @app.get("/stocks/{index_name}")
 async def get_index_stocks(index_name: str):
     """獲取指定指數的所有成分股"""
-    if index_name.upper() == "SP500":
-        data = load_stock_data("sp500_data.json")
-        if not data:
-            raise HTTPException(status_code=404, detail="SP500 data not found")
-        return {"market": "US", "index": "SP500", "stocks": data}
+    index_name = index_name.upper()
     
+    if index_name in US_INDICES:
+        data = load_stock_data(f"{index_name.lower()}_data.json")
+        if not data:
+            raise HTTPException(status_code=404, detail=f"{index_name} data not found")
+        return {"market": "US", "index": index_name, "stocks": data}
     elif index_name in ["0050", "0100"]:
         data = load_stock_data(f"stock_data_{index_name}.json")
         if not data:
             raise HTTPException(status_code=404, detail=f"Data for {index_name} not found")
         return {"market": "TW", "index": index_name, "stocks": data}
-    
     else:
         raise HTTPException(status_code=404, detail="Invalid index name")
 
@@ -73,16 +79,16 @@ async def get_stock_info(stock_code: str):
             }
     
     # 檢查美股
-    sp500_data = load_stock_data("sp500_data.json")
-    if stock_code in sp500_data:
-        result["US"] = {
-            "index": "SP500",
-            "company": sp500_data[stock_code]
-        }
-    
+    for index in US_INDICES:
+        data = load_stock_data(f"{index.lower()}_data.json")
+        if stock_code in data:
+            result["US"] = {
+                "index": index,
+                "company": data[stock_code]
+            }
+
     if not result:
         raise HTTPException(status_code=404, detail=f"Stock {stock_code} not found")
-    
     return result
 
 @app.get("/search/{company_name}")
@@ -100,16 +106,16 @@ async def search_company(company_name: str):
             result["TW"][index] = matches
     
     # 搜尋美股
-    sp500_data = load_stock_data("sp500_data.json")
-    matches = {code: name for code, name in sp500_data.items() 
-              if company_name.lower() in name.lower()}
-    if matches:
-        result["US"]["SP500"] = matches
-    
+    for index in US_INDICES:
+        data = load_stock_data(f"{index.lower()}_data.json")
+        matches = {code: name for code, name in data.items() 
+                  if company_name.lower() in name.lower()}
+        if matches:
+            result["US"][index] = matches
+
     if not result["TW"] and not result["US"]:
         raise HTTPException(status_code=404, 
                           detail=f"No matches found for {company_name}")
-    
     return result
 
 @app.get("/market/{market}")
@@ -123,17 +129,15 @@ async def get_market_stocks(market: str):
             data = load_stock_data(f"stock_data_{index}.json")
             if data:
                 result[index] = data
-    
     elif market == "US":
-        data = load_stock_data("sp500_data.json")
-        if data:
-            result["SP500"] = data
-    
+        for index in US_INDICES:
+            data = load_stock_data(f"{index.lower()}_data.json")
+            if data:
+                result[index] = data
     else:
         raise HTTPException(status_code=404, detail="Invalid market")
-    
+
     if not result:
-        raise HTTPException(status_code=404, 
+        raise HTTPException(status_code=404,
                           detail=f"No data found for market {market}")
-    
     return {"market": market, "data": result}

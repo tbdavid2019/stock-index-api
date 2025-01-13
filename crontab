@@ -1,2 +1,2 @@
 0 1 * * * cd /app && python crawler.py >> /app/data/crawler.log 2>&1
-0 1 * * * cd /app && python crawler-sp500.py >> /app/data/crawler-sp500.log 2>&1
+0 1 * * * cd /app && python crawler-i18n.py >> /app/data/crawler-i18n.log 2>&1

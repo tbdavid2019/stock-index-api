@@ -3,7 +3,7 @@
 # 首次運行爬蟲
 echo "Initial crawling..."
 python crawler.py
-python crawler-sp500.py
+python crawler-i18n.py
 
 # 啟動 cron
 service cron start

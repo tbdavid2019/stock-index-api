@@ -52,7 +52,7 @@ pip install -r requirements.txt
 1. 執行爬蟲獲取初始資料：
 ```bash
 python crawler.py
-python crawler-sp500.py
+python crawler-i18n.py
 ```
 
 2. 啟動 API 伺服器：
@@ -225,7 +225,7 @@ pip install -r requirements.txt
 1. Run the crawlers to fetch initial data:
 ```bash
 python crawler.py
-python crawler-sp500.py
+python crawler-i18n.py
 ```
 
 2. Start the API server:
