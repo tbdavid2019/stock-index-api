@@ -22,7 +22,7 @@
 
 ## 系統需求
 
-- Python 3.9+
+- Python 3.11+
 - Docker 和 Docker Compose（用於容器化部署）
 - Chrome/Chromium（用於網路爬蟲）
 

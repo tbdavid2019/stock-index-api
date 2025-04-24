@@ -1,5 +1,5 @@
-# 使用 Python 3.9 作為基礎映像
-FROM python:3.9-slim
+# 使用 Python 3.11 作為基礎映像
+FROM python:3.11-slim
 
 # 設置工作目錄
 WORKDIR /app
@@ -17,6 +17,7 @@ COPY requirements.txt .
 COPY app.py .
 COPY crawler.py .
 COPY crawler-sp500.py .
+COPY crawler-i18n.py .
 COPY crontab /etc/cron.d/crontab
 
 # 創建數據目錄

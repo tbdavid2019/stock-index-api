@@ -1,3 +1,2 @@
-0 1 * * * cd /app && python crawler.py >> /app/data/crawler.log 2>&1
-
-0 1 * * * cd /app && python crawler-i18n.py >> /app/data/crawler-i18n.log 2>&1
+0 1 * * * /usr/local/bin/python /app/crawler.py >> /app/data/crawler.log 2>&1
+10 1 * * * /usr/local/bin/python /app/crawler-i18n.py >> /app/data/crawler-i18n.log 2>&1
