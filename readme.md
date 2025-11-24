@@ -3,6 +3,30 @@
 
 一個基於 FastAPI 的服務，提供台灣 ETF（0050、0100）和標普 500 指數的成分股資訊。
 
+```
+http://13.125.121.198:8090/
+S&P 500 Data
+標普 500 數據:
+curl http://answerbook.david888.com/SP500
+
+TW0050 Data
+元大台灣 50 數據:
+curl http://answerbook.david888.com/TW0050
+
+TW0051 Data
+元大台灣 50 正 2 數據:
+curl http://answerbook.david888.com/TW0051
+
+Nasdaq 100 Data
+納斯達克 100 數據:
+curl http://answerbook.david888.com/nasdaq100
+
+Dow Jones Data
+道瓊工業指數數據:
+curl http://answerbook.david888.com/dowjones
+
+```
+
 ## 功能特點
 
 - 🔄 每日自動更新股票成分資料
