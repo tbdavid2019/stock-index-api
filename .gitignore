@@ -2,3 +2,4 @@
 .venv
 myenv/
 *.log
+data/node_modules/

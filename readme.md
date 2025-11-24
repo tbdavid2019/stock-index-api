@@ -156,13 +156,83 @@ git checkout -b feature/your-feature-name
 - Docker 容器化部署支援
 - 自動更新排程
 
+## 更新個股指數資料
+
+### 資料更新流程
+
+本專案透過爬蟲自動抓取最新的指數成分股資料：
+
+**台股指數 (0050, 0100)**
+- 執行 `crawler.py` → 爬取玩股網的成分股資料
+- 產生檔案：`stock_data_0050.json`, `stock_data_0100.json`
+
+**美股指數 (SP500, NASDAQ100, DOWJONES)**
+- 執行 `crawler-i18n.py` → 爬取 SlickCharts 的資料
+- 產生檔案：`sp500_data.json`, `nasdaq100_data.json`, `dowjones_data.json`
+
+### 手動更新步驟
+
+```bash
+# 1. 啟動虛擬環境
+source myenv/bin/activate
+
+# 2. 執行爬蟲（更新台股）
+python crawler.py
+
+# 3. 執行爬蟲（更新美股）
+python crawler-i18n.py
+```
+
+### 上傳到 Cloudflare KV
+
+將更新後的資料上傳到 Cloudflare Workers KV 儲存：
+
+```bash
+# 1. 進入 data 目錄
+cd data/
+
+# 2. 登入 Cloudflare (首次需要)
+wrangler login
+
+# 3. 上傳各指數資料到 KV
+wrangler kv:key put --namespace-id=5e8e4092fd964584a2152c4a6f948d47 "SP500" "$(cat sp500_data.json)"
+wrangler kv:key put --namespace-id=5e8e4092fd964584a2152c4a6f948d47 "TW0050" "$(cat stock_data_0050.json)"
+wrangler kv:key put --namespace-id=5e8e4092fd964584a2152c4a6f948d47 "TW0051" "$(cat stock_data_0100.json)"
+wrangler kv:key put --namespace-id=5e8e4092fd964584a2152c4a6f948d47 "nasdaq100" "$(cat nasdaq100_data.json)"
+wrangler kv:key put --namespace-id=5e8e4092fd964584a2152c4a6f948d47 "dowjones" "$(cat dowjones_data.json)"
+```
+
+### 一鍵執行腳本
+
+也可以直接執行完整的更新和上傳流程：
+
+```bash
+bash upload2KV.sh
+```
+
+這個腳本會自動：
+1. 啟動虛擬環境
+2. 執行兩個爬蟲更新資料
+3. 上傳所有資料到 Cloudflare KV
+
+### 自動化排程
+
+在 Docker 環境中，系統會透過 `crontab` 自動執行：
+- **每天凌晨 1:00** - 執行 `crawler.py` 更新台股資料
+- **每天凌晨 1:10** - 執行 `crawler-i18n.py` 更新美股資料
+
+### 資料存儲位置
+
+- **本地儲存**：`data/` 目錄下的 JSON 檔案
+- **雲端儲存**：Cloudflare Workers KV (Namespace ID: `5e8e4092fd964584a2152c4a6f948d47`)
+
 ## 常見問題
 
 ### Q: 如何修改更新時間？
 A: 修改 `crontab` 檔案中的排程設定。
 
 ### Q: 資料儲存在哪裡？
-A: 所有資料都儲存在 `data` 目錄下的 JSON 檔案中。
+A: 所有資料都儲存在 `data` 目錄下的 JSON 檔案中，並可選擇上傳到 Cloudflare KV 進行雲端儲存。
 
 ### Q: 如何確認服務正常運行？
 A: 訪問 `http://localhost:8000/docs` 查看 API 文檔和測試端點。
