@@ -1,8 +1,5 @@
-fastapi
-uvicorn
-selenium
-webdriver-manager==4.0.1
+requests
 pandas
-python-crontab
 beautifulsoup4
 lxml
+flask

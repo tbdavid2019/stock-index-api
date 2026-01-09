@@ -1,429 +1,134 @@
+# Stock Index API
 
-# 股票指數 API
+提供台灣股市指數成分股與基金持股資料的 API 服務。
 
-一個基於 FastAPI 的服務，提供台灣 ETF（0050、0100）和標普 500 指數的成分股資訊。
+## 功能
 
+### 1. 國際指數成分股
+- S&P 500
+- NASDAQ 100  
+- Dow Jones
+
+### 2. 台灣 ETF 基金持股
+從公開資訊觀測站 (MOPS) 抓取基金每季持股明細。
+
+#### 目前支援的基金
+| 基金名稱 | 股票代碼 | 檔案名稱格式 | 持股數 |
+|---------|---------|-------------|--------|
+| 元大台灣卓越50 | 0050 | `fund_元大台灣卓越50_114_04.json` | 54 |
+| 元大台灣中型100 | 0100 | `fund_元大台灣中型100_114_04.json` | 104 |
+| 元大台灣高股息 | 0056 | `fund_台灣高股息_114_04.json` | 54 |
+| 元大摩臺 | 0057 | `fund_摩臺_114_04.json` | 90 |
+| 元大台灣高股息低波動 | 00713 | `fund_台灣高股息低波動ETF_114_04.json` | 55 |
+| 元大臺灣ESG永續 | 00850 | `fund_臺灣ESG永續ETF_114_04.json` | 109 |
+| 元大臺灣價值高息 | 00940 | `fund_臺灣價值高息ETF_114_04.json` | 54 |
+
+*註：檔名格式為 `fund_{基金名稱}_{年度}_{季度}.json`*
+
+## 使用方式
+
+### 安裝依賴
+```bash
+python3 -m venv myenv
+source myenv/bin/activate
+pip install -r requirements.txt
 ```
-http://13.125.121.198:8090/
-S&P 500 Data
-標普 500 數據:
-curl http://answerbook.david888.com/SP500
 
-TW0050 Data
-元大台灣 50 數據:
-curl http://answerbook.david888.com/TW0050
-
-TW0051 Data
-元大台灣 50 正 2 數據:
-curl http://answerbook.david888.com/TW0051
-
-Nasdaq 100 Data
-納斯達克 100 數據:
-curl http://answerbook.david888.com/nasdaq100
-
-Dow Jones Data
-道瓊工業指數數據:
-curl http://answerbook.david888.com/dowjones
-
+### 抓取基金持股資料
+```bash
+source myenv/bin/activate
+python crawler-mops-individual.py
 ```
 
-## 功能特點
+**自動偵測最新季度**：腳本會根據當前日期自動計算最新可用的季度（延遲一季）。
 
-- 🔄 每日自動更新股票成分資料
-- 🌏 支援台灣和美國市場
-- 🔍 靈活的搜尋功能
-- 🐳 Docker 支援與自動排程
-- 📊 RESTful API 端點
+執行後會在 `data/` 目錄下生成：
+- `fund_元大台灣卓越50_114_04.json` - 0050 持股明細
+- `fund_元大台灣中型100_114_04.json` - 0100 持股明細
+- `fund_*.json` - 其他基金持股明細
+- `funds_summary_114_04.json` - 所有基金摘要
+
+### 資料格式
+```json
+[
+  {
+    "股票代號": "2330",
+    "股票名稱": "台積電",
+    "持股比率": "47.12%",
+    "產業類別": "半導體業"
+  }
+]
+```
+
+## 自訂設定
+
+### 手動指定季度
+編輯 `crawler-mops-individual.py` 最後幾行：
+
+```python
+# 取消註解並修改：
+roc_year = 115  # 民國年
+season = 1      # 季度 (1-4)
+```
+
+### 新增基金映射
+編輯 `FUND_NAME_MAPPING` 字典：
+
+```python
+FUND_NAME_MAPPING = {
+    '元大台灣卓越50': '0050',
+    '元大台灣中型100': '0100',
+    '你的基金名稱': '股票代碼',
+}
+```
+
+## 部署與上傳
+
+### 上傳到 Cloudflare KV
+```bash
+./upload2KV.sh
+```
+
+這會：
+1. 抓取最新資料
+2. 上傳到 Cloudflare KV Storage
+
+### 使用 Docker
+```bash
+docker-compose up -d
+```
 
 ## API 端點
 
-- `/` - API 介紹和可用端點列表
-- `/indices` - 獲取所有可用指數
-- `/stocks/{index_name}` - 獲取特定指數的成分股
-- `/stock/{stock_code}` - 依股票代號搜尋
-- `/search/{company_name}` - 依公司名稱搜尋（模糊搜尋）
-- `/market/{market}` - 獲取指定市場（TW/US）的所有股票
+- `GET /api/sp500` - S&P 500 成分股
+- `GET /api/nasdaq100` - NASDAQ 100 成分股
+- `GET /api/dowjones` - Dow Jones 成分股
+- `GET /api/0050` - 元大台灣卓越50 持股
+- `GET /api/0100` - 元大台灣中型100 持股
 
-## 系統需求
+## 注意事項
 
-- Python 3.11+
-- Docker 和 Docker Compose（用於容器化部署）
-- Chrome/Chromium（用於網路爬蟲）
-
-## 安裝說明
-
-1. 複製專案：
-```bash
-git clone https://github.com/tbdavid2019/stock-index-api.git
-cd stock-index-api
-```
-
-2. 設置虛擬環境（建議但非必要）：
-```bash
-python -m venv myenv
-source myenv/bin/activate  # Windows 系統使用：myenv\Scripts\activate
-```
-
-3. 安裝相依套件：
-```bash
-pip install -r requirements.txt
-```
-
-## 使用方法
-
-### 本地開發
-
-1. 執行爬蟲獲取初始資料：
-```bash
-python crawler.py
-python crawler-i18n.py
-```
-
-2. 啟動 API 伺服器：
-```bash
-uvicorn app:app --reload
-```
-
-API 將在 `http://localhost:8000` 運行
-
-### Docker 部署
-
-1. 建立並啟動容器：
-```bash
-docker-compose up --build -d
-```
-
-這個指令會：
-- 建立 Docker 映像檔
-- 在端口 8000 啟動服務
-- 設置每日凌晨 01:00 更新資料
-- 建立持久化資料存儲
-
-2. 停止服務：
-```bash
-docker-compose down
-```
-
-## API 文檔
-
-服務運行後，可訪問：
-- Swagger UI：`http://localhost:8000/docs`
-- ReDoc：`http://localhost:8000/redoc`
-
-## 資料來源
-
-- 台灣 ETF 成分股：[玩股網](https://www.wantgoo.com/)
-- 標普 500 成分股：[SlickCharts](https://www.slickcharts.com/sp500)
+1. **SSL 證書**：MOPS 網站證書有問題，程式中使用 `verify=False`
+2. **更新頻率**：基金持股每季更新一次
+3. **資料來源**：公開資訊觀測站 (https://mopsov.twse.com.tw)
+4. **檔名格式**：統一使用 `fund_{基金名稱}_{年度}_{季度}.json`
 
 ## 專案結構
-
 ```
-stock-index-api/
-├── app.py              # FastAPI 應用程式
-├── crawler.py          # 台股爬蟲
-├── crawler-sp500.py    # 標普 500 爬蟲
-├── requirements.txt    # Python 相依套件
-├── Dockerfile         
-├── docker-compose.yml
-├── start.sh           # Docker 啟動腳本
-├── crontab            # 排程任務
-└── data/              # 股票資料儲存
-```
-
-## 開發指南
-
-### 新增功能
-
-1. 建立新分支：
-```bash
-git checkout -b feature/your-feature-name
+.
+├── app.py                          # Flask API 主程式
+├── crawler-mops-individual.py      # MOPS 基金持股爬蟲 (自動偵測最新季度)
+├── crawler-i18n.py                 # 國際指數爬蟲
+├── crawler-sp500.py                # S&P 500 爬蟲
+├── crawler.py                      # 舊版爬蟲
+├── upload2KV.sh                    # 上傳腳本
+├── data/                           # 資料目錄
+│   ├── fund_元大台灣卓越50_114_04.json
+│   ├── fund_元大台灣中型100_114_04.json
+│   └── funds_summary_114_04.json
+└── requirements.txt
 ```
 
-2. 進行修改
-3. 提交 Pull Request
+## 貢獻
 
-### 執行測試
-
-```bash
-# TODO: 新增測試說明
-```
-
-## 參與貢獻
-
-1. Fork 本專案
-2. 建立功能分支
-3. 提交變更
-4. 推送到分支
-5. 建立 Pull Request
-
-## 授權條款
-
-本專案使用 MIT 授權條款 - 詳見 LICENSE 檔案
-
-## 聯絡方式
-
-- 作者：[@tbdavid2019](https://github.com/tbdavid2019)
-- 專案連結：[https://github.com/tbdavid2019/stock-index-api](https://github.com/tbdavid2019/stock-index-api)
-
-## 致謝
-
-- [FastAPI](https://fastapi.tiangolo.com/)
-- [Selenium](https://www.selenium.dev/)
-- [Docker](https://www.docker.com/)
-
-## 更新日誌
-
-### [1.0.0] - 2024-01-XX
-- 初始版本發布
-- 支援台股 ETF（0050、0100）成分股查詢
-- 支援標普 500 成分股查詢
-- Docker 容器化部署支援
-- 自動更新排程
-
-## 更新個股指數資料
-
-### 資料更新流程
-
-本專案透過爬蟲自動抓取最新的指數成分股資料：
-
-**台股指數 (0050, 0100)**
-- 執行 `crawler.py` → 爬取玩股網的成分股資料
-- 產生檔案：`stock_data_0050.json`, `stock_data_0100.json`
-
-**美股指數 (SP500, NASDAQ100, DOWJONES)**
-- 執行 `crawler-i18n.py` → 爬取 SlickCharts 的資料
-- 產生檔案：`sp500_data.json`, `nasdaq100_data.json`, `dowjones_data.json`
-
-### 手動更新步驟
-
-```bash
-# 1. 啟動虛擬環境
-source myenv/bin/activate
-
-# 2. 執行爬蟲（更新台股）
-python crawler.py
-
-# 3. 執行爬蟲（更新美股）
-python crawler-i18n.py
-```
-
-### 上傳到 Cloudflare KV
-
-將更新後的資料上傳到 Cloudflare Workers KV 儲存：
-
-```bash
-# 1. 進入 data 目錄
-cd data/
-
-# 2. 登入 Cloudflare (首次需要)
-wrangler login
-
-# 3. 上傳各指數資料到 KV
-wrangler kv:key put --namespace-id=5e8e4092fd964584a2152c4a6f948d47 "SP500" "$(cat sp500_data.json)"
-wrangler kv:key put --namespace-id=5e8e4092fd964584a2152c4a6f948d47 "TW0050" "$(cat stock_data_0050.json)"
-wrangler kv:key put --namespace-id=5e8e4092fd964584a2152c4a6f948d47 "TW0051" "$(cat stock_data_0100.json)"
-wrangler kv:key put --namespace-id=5e8e4092fd964584a2152c4a6f948d47 "nasdaq100" "$(cat nasdaq100_data.json)"
-wrangler kv:key put --namespace-id=5e8e4092fd964584a2152c4a6f948d47 "dowjones" "$(cat dowjones_data.json)"
-```
-
-### 一鍵執行腳本
-
-也可以直接執行完整的更新和上傳流程：
-
-```bash
-bash upload2KV.sh
-```
-
-這個腳本會自動：
-1. 啟動虛擬環境
-2. 執行兩個爬蟲更新資料
-3. 上傳所有資料到 Cloudflare KV
-
-### 自動化排程
-
-在 Docker 環境中，系統會透過 `crontab` 自動執行：
-- **每天凌晨 1:00** - 執行 `crawler.py` 更新台股資料
-- **每天凌晨 1:10** - 執行 `crawler-i18n.py` 更新美股資料
-
-### 資料存儲位置
-
-- **本地儲存**：`data/` 目錄下的 JSON 檔案
-- **雲端儲存**：Cloudflare Workers KV (Namespace ID: `5e8e4092fd964584a2152c4a6f948d47`)
-
-## 常見問題
-
-### Q: 如何修改更新時間？
-A: 修改 `crontab` 檔案中的排程設定。
-
-### Q: 資料儲存在哪裡？
-A: 所有資料都儲存在 `data` 目錄下的 JSON 檔案中，並可選擇上傳到 Cloudflare KV 進行雲端儲存。
-
-### Q: 如何確認服務正常運行？
-A: 訪問 `http://localhost:8000/docs` 查看 API 文檔和測試端點。
-
-
----
-
-# Stock Index API
-
-
-
-A FastAPI-based service that provides stock constituent information for Taiwan ETFs (0050, 0100) and S&P 500 index.
-
-## Features
-
-- 🔄 Daily auto-updating stock constituent data
-- 🌏 Support for both Taiwan and US markets
-- 🔍 Flexible search capabilities
-- 🐳 Docker support with automated scheduling
-- 📊 RESTful API endpoints
-
-## API Endpoints
-
-- `/` - API introduction and available endpoints
-- `/indices` - Get all available indices
-- `/stocks/{index_name}` - Get constituents for a specific index
-- `/stock/{stock_code}` - Search stock by code
-- `/search/{company_name}` - Search companies by name (fuzzy search)
-- `/market/{market}` - Get all stocks for specified market (TW/US)
-
-## Prerequisites
-
-- Python 3.9+
-- Docker and Docker Compose (for containerized deployment)
-- Chrome/Chromium (for web scraping)
-
-## Installation
-
-1. Clone the repository:
-```bash
-git clone https://github.com/tbdavid2019/stock-index-api.git
-cd stock-index-api
-```
-
-2. Set up a virtual environment (optional but recommended):
-```bash
-python -m venv myenv
-source myenv/bin/activate  # On Windows: myenv\Scripts\activate
-```
-
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-## Usage
-
-### Local Development
-
-1. Run the crawlers to fetch initial data:
-```bash
-python crawler.py
-python crawler-i18n.py
-```
-
-2. Start the API server:
-```bash
-uvicorn app:app --reload
-```
-
-The API will be available at `http://localhost:8000`
-
-### Docker Deployment
-
-1. Build and start the container:
-```bash
-docker-compose up --build -d
-```
-
-This will:
-- Build the Docker image
-- Start the service on port 8000
-- Set up daily updates at 01:00
-- Create a persistent volume for data storage
-
-2. Stop the service:
-```bash
-docker-compose down
-```
-
-## API Documentation
-
-Once the service is running, visit:
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
-
-## Data Sources
-
-- Taiwan ETF constituents: [WantGoo](https://www.wantgoo.com/)
-- S&P 500 constituents: [SlickCharts](https://www.slickcharts.com/sp500)
-
-## Project Structure
-
-```
-stock-index-api/
-├── app.py              # FastAPI application
-├── crawler.py          # Taiwan stocks crawler
-├── crawler-sp500.py    # S&P 500 crawler
-├── requirements.txt    # Python dependencies
-├── Dockerfile         
-├── docker-compose.yml
-├── start.sh           # Docker entry point
-├── crontab            # Scheduled tasks
-└── data/              # Stock data storage
-```
-
-## Development
-
-### Adding New Features
-
-1. Create a new branch:
-```bash
-git checkout -b feature/your-feature-name
-```
-
-2. Make your changes
-3. Submit a pull request
-
-### Running Tests
-
-```bash
-# TODO: Add test instructions
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a new Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details
-
-## Contact
-
-- Created by [@tbdavid2019](https://github.com/tbdavid2019)
-- Project Link: [https://github.com/tbdavid2019/stock-index-api](https://github.com/tbdavid2019/stock-index-api)
-
-## Acknowledgments
-
-- [FastAPI](https://fastapi.tiangolo.com/)
-- [Selenium](https://www.selenium.dev/)
-- [Docker](https://www.docker.com/)
-
-
-
-```
-stock-index-api/
-│
-├── app.py            # API 服務
-├── crawler.py        # 爬蟲程式
-├── requirements.txt  # 依賴套件
-├── data/            # 存放爬蟲獲取的數據
-│   └── .gitkeep
-├── README.md        # 專案說明
-└── .gitignore       # Git 忽略檔案
-```
+歡迎提交 PR 新增更多基金映射或改進爬蟲邏輯！
