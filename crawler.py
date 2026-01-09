@@ -3,11 +3,11 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
 import time
 import json
 import os
 import platform
+import re
 
 # 創建數據目錄
 DATA_DIR = "data"
@@ -16,137 +16,124 @@ if not os.path.exists(DATA_DIR):
 
 def setup_driver():
     """設置並返回 webdriver"""
-    # 檢測運行環境
-    is_mac_arm = platform.system() == 'Darwin' and platform.processor() == 'arm'
-    
     options = webdriver.ChromeOptions()
     
-    # 檢查是否在 Docker 環境中
+    # 判斷是否在 Docker 環境
     if os.path.exists('/.dockerenv'):
+        options.add_argument("--headless=new")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
         options.binary_location = "/usr/bin/chromium"
-    elif is_mac_arm:
-        # Mac M1/M2/M3 特定設置
-        options.binary_location = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-    
-    # 加入無頭模式設置
-    options.add_argument("--headless=new")
+    else:
+        # 本地開發環境 (macOS)
+        options.add_argument("--headless=new")
+        if platform.system() == 'Darwin':
+            options.binary_location = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+        
     options.add_argument("--window-size=1920,1080")
     options.add_argument('--disable-gpu')
-    
-    # 其他設置保持不變
     options.add_argument('--disable-blink-features=AutomationControlled')
-    options.add_argument('--disable-notifications')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
-    
+    options.add_argument("user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option('useAutomationExtension', False)
     
     try:
-        # 使用 ChromeDriverManager 自動下載對應版本的 driver
-        service = Service()
-        driver = webdriver.Chrome(service=service, options=options)
-        
-        driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
-            'source': '''
-                Object.defineProperty(navigator, 'webdriver', {
-                    get: () => undefined
-                })
-            '''
-        })
-        
+        # Selenium 4.6+ 會自動管理 driver，不需要手動指定
+        driver = webdriver.Chrome(options=options)
         return driver
     except Exception as e:
-        print(f"Error creating driver: {e}")
-        raise
+        print(f"Driver 初始化失敗: {e}")
+        return None
 
-
-def get_stock_data(index_code):
-    """抓取指定指數的成分股數據"""
-    driver = setup_driver()
-    stock_dict = {}
+def fetch_goodinfo_components(driver, etf_name):
+    """
+    從 Goodinfo 抓取 ETF 成分股
+    etf_name: '0050' 或 '中100' (中型100)
+    """
+    # URL encode 中文
+    import urllib.parse
+    keyword = f"{etf_name}成分股"
+    encoded = urllib.parse.quote(keyword)
+    url = f"https://goodinfo.tw/tw/StockList.asp?MARKET_CAT=%E7%86%B1%E9%96%80%E6%8E%92%E8%A1%8C&INDUSTRY_CAT={encoded}"
+    
+    print(f"前往 Goodinfo: {url}")
     
     try:
-        url = f"https://www.wantgoo.com/index/{index_code}/stocks"
         driver.get(url)
-        time.sleep(10)
+        time.sleep(5)
         
-        # 嘗試定位表格
-        table = None
-        selectors = [
-            "//table[contains(@class, 'constituent-list')]",
-            "//div[contains(@class, 'table')]//table",
-            "//table"
-        ]
+        stock_dict = {}
         
-        for selector in selectors:
+        # Goodinfo 的資料表格 ID 是 tblStockList
+        table = driver.find_element(By.ID, "tblStockList")
+        rows = table.find_elements(By.TAG_NAME, "tr")
+        
+        print(f"找到 {len(rows)} 列資料")
+        
+        for row in rows[1:]:  # 跳過表頭
             try:
-                table = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.XPATH, selector))
-                )
-                if table:
-                    break
+                cols = row.find_elements(By.TAG_NAME, "td")
+                if len(cols) >= 2:
+                    code = cols[0].text.strip()
+                    name = cols[1].text.strip()
+                    
+                    # 驗證股票代碼 (4位數字)
+                    if code.isdigit() and len(code) == 4 and name:
+                        stock_dict[code] = name
             except:
                 continue
         
-        if table:
-            rows = table.find_elements(By.TAG_NAME, "tr")[1:]  # 跳過表頭
-            
-            for row in rows:
-                cols = row.find_elements(By.TAG_NAME, "td")
-                if cols:
-                    company_info = cols[0].text.split('\n')
-                    if len(company_info) == 2:
-                        stock_code = company_info[1].strip()  # 股票代號
-                        company_name = company_info[0]        # 公司名稱
-                        stock_dict[stock_code] = company_name
-                        print(f"Added: {stock_code} -> {company_name}")
-            
-            return stock_dict
-        else:
-            print("無法找到表格元素")
-            return None
-            
-    except Exception as e:
-        print(f"Error occurred: {str(e)}")
-        return None
+        return stock_dict if len(stock_dict) > 0 else None
         
-    finally:
-        driver.quit()
+    except Exception as e:
+        print(f"Goodinfo 抓取錯誤: {e}")
+        return None
 
-def save_stock_data(data, filename):
-    """保存數據到文件"""
+def save_json(data, filename):
     filepath = os.path.join(DATA_DIR, filename)
     with open(filepath, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
-    print(f"Data saved to {filepath}")
+    print(f"資料已寫入: {filepath}")
 
 if __name__ == "__main__":
-    # 定義要抓取的指數列表
-    indices = {
-        "^539": "0050",
-        "^543": "0100"
+    
+    # Goodinfo 的分類名稱
+    # 0050成分股, 中100成分股
+    targets = {
+        "0050": "0050",
+        "0100": "中100"
     }
     
-    # 抓取所有指數的成分股
+    driver = setup_driver()
+    if not driver:
+        print("無法初始化瀏覽器，程式結束")
+        exit(1)
+        
     all_data = {}
     
-    for index_code, index_name in indices.items():
-        print(f"\nFetching data for {index_name}...")
-        stock_data = get_stock_data(index_code)
-        
-        if stock_data:
-            all_data[index_name] = stock_data
-            # 保存單個指數的數據
-            save_stock_data(stock_data, f"stock_data_{index_name}.json")
-            print(f"Successfully fetched {len(stock_data)} stocks for {index_name}")
+    try:
+        for output_name, goodinfo_name in targets.items():
+            print(f"\n{'='*50}")
+            print(f"正在抓取 {output_name} ({goodinfo_name}) 成分股")
+            print(f"{'='*50}")
+            
+            data = fetch_goodinfo_components(driver, goodinfo_name)
+            
+            if data and len(data) > 0:
+                print(f"✓ 成功抓到 {len(data)} 檔成分股")
+                save_json(data, f"stock_data_{output_name}.json")
+                all_data[output_name] = data
+            else:
+                print(f"✗ {output_name} 抓取失敗")
+            
+            # 避免請求太快被擋
+            time.sleep(3)
+                
+        # 彙總存檔
+        if all_data:
+            save_json(all_data, "all_stock_data.json")
+            print(f"\n總結: 成功抓取 {len(all_data)} 個 ETF 的成分股")
         else:
-            print(f"Failed to fetch data for {index_name}")
-    
-    # 保存所有數據到一個文件
-    if all_data:
-        save_stock_data(all_data, "all_stock_data.json")
-        print("\nAll data saved successfully!")
-    else:
-        print("\nNo data was collected!")
+            print("\n抓取失敗！")
+            
+    finally:
+        driver.quit()

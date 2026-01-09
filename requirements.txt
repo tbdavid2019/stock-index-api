@@ -4,3 +4,5 @@ selenium
 webdriver-manager==4.0.1
 pandas
 python-crontab
+beautifulsoup4
+lxml
