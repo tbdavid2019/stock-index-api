@@ -83,23 +83,26 @@ def parse_individual_funds(html_content: str, year: int, season: int):
                         # 清理資料
                         df = df.dropna(how='all')
                         
+                        # 過濾掉小計和總計行
+                        if '股票代號' in df.columns:
+                            df = df[~df['股票代號'].astype(str).str.contains('小計|總計', na=False)]
+                        
                         # 儲存此基金的持股
-                        # 統一使用 fund_ 前綴 + 基金名稱
+                        # 使用固定檔名（不含年度季度），方便排程自動更新
                         if current_fund_code:
-                            # 即使有代碼，也使用中文名稱作為檔名以保持一致性
-                            safe_name = re.sub(r'[^\w\s-]', '', current_fund).replace(' ', '_')
-                            filename = f"fund_{safe_name}_{year}_{season:02d}.json"
+                            # 使用股票代碼作為檔名
+                            filename = f"fund_{current_fund_code}.json"
                         else:
                             # 使用基金名稱作為檔名
                             safe_name = re.sub(r'[^\w\s-]', '', current_fund).replace(' ', '_')
-                            filename = f"fund_{safe_name}_{year}_{season:02d}.json"
+                            filename = f"fund_{safe_name}.json"
                         
                         save_path = os.path.join(DATA_DIR, filename)
                         
-                        # 提取需要的欄位
-                        available_cols = [col for col in ['股票代號', '股票名稱', '持股比率', '產業類別'] if col in df.columns]
-                        if available_cols:
-                            fund_data = df[available_cols].to_dict('records')
+                        # 提取需要的欄位並轉換為簡單的 key-value 格式（與 SP500 一致）
+                        if '股票代號' in df.columns and '股票名稱' in df.columns:
+                            # 轉換為 {"股票代號": "股票名稱"} 格式
+                            fund_data = dict(zip(df['股票代號'].astype(str), df['股票名稱'].astype(str)))
                             
                             with open(save_path, 'w', encoding='utf-8') as f:
                                 json.dump(fund_data, f, ensure_ascii=False, indent=2)
@@ -171,7 +174,7 @@ def get_all_fund_holdings(year: int, season: int):
         print(f"\n總共處理了 {len(fund_sections)} 個基金")
         
         # 儲存摘要
-        summary_path = os.path.join(DATA_DIR, f"funds_summary_{year}_{season:02d}.json")
+        summary_path = os.path.join(DATA_DIR, "funds_summary.json")
         with open(summary_path, 'w', encoding='utf-8') as f:
             json.dump(fund_sections, f, ensure_ascii=False, indent=2)
         print(f"摘要已儲存至: {summary_path}")

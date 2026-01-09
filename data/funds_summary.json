@@ -1,0 +1,56 @@
+[
+  {
+    "fund_name": "元大台灣卓越50",
+    "fund_code": "0050",
+    "holdings_count": 50,
+    "file": "fund_0050.json"
+  },
+  {
+    "fund_name": "元大台灣中型100",
+    "fund_code": "0100",
+    "holdings_count": 100,
+    "file": "fund_0100.json"
+  },
+  {
+    "fund_name": "台灣ETF傘型",
+    "fund_code": null,
+    "holdings_count": 194,
+    "file": "fund_台灣ETF傘型.json"
+  },
+  {
+    "fund_name": "台灣ETF傘型",
+    "fund_code": null,
+    "holdings_count": 16,
+    "file": "fund_台灣ETF傘型.json"
+  },
+  {
+    "fund_name": "台灣高股息",
+    "fund_code": null,
+    "holdings_count": 50,
+    "file": "fund_台灣高股息.json"
+  },
+  {
+    "fund_name": "摩臺",
+    "fund_code": null,
+    "holdings_count": 86,
+    "file": "fund_摩臺.json"
+  },
+  {
+    "fund_name": "台灣高股息低波動ETF",
+    "fund_code": null,
+    "holdings_count": 51,
+    "file": "fund_台灣高股息低波動ETF.json"
+  },
+  {
+    "fund_name": "臺灣ESG永續ETF",
+    "fund_code": null,
+    "holdings_count": 105,
+    "file": "fund_臺灣ESG永續ETF.json"
+  },
+  {
+    "fund_name": "臺灣價值高息ETF",
+    "fund_code": null,
+    "holdings_count": 50,
+    "file": "fund_臺灣價值高息ETF.json"
+  }
+]

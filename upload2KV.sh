@@ -12,7 +12,7 @@ pnpm install
 
 cd data && \
 pnpm wrangler kv key put --namespace-id=5e8e4092fd964584a2152c4a6f948d47 --remote "SP500" --path sp500_data.json && \
-pnpm wrangler kv key put --namespace-id=5e8e4092fd964584a2152c4a6f948d47 --remote "TW0050" --path fund_元大台灣卓越50_114_04.json && \
-pnpm wrangler kv key put --namespace-id=5e8e4092fd964584a2152c4a6f948d47 --remote "TW0100" --path fund_元大台灣中型100_114_04.json && \
+pnpm wrangler kv key put --namespace-id=5e8e4092fd964584a2152c4a6f948d47 --remote "TW0050" --path fund_0050.json && \
+pnpm wrangler kv key put --namespace-id=5e8e4092fd964584a2152c4a6f948d47 --remote "TW0100" --path fund_0100.json && \
 pnpm wrangler kv key put --namespace-id=5e8e4092fd964584a2152c4a6f948d47 --remote "nasdaq100" --path nasdaq100_data.json && \
 pnpm wrangler kv key put --namespace-id=5e8e4092fd964584a2152c4a6f948d47 --remote "dowjones" --path dowjones_data.json
