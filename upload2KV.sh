@@ -1,7 +1,7 @@
 source myenv/bin/activate
 
-python crawler-mops-individual.py
-python crawler-i18n.py
+python3 crawler-mops-individual.py
+python3 crawler-i18n.py
 
 # 原本找不到 wrangler 指令 → 使用 pnpm install 安裝
 # 新版 wrangler 語法改變 → 使用 pnpm wrangler kv key put 而非 wrangler kv:key put

@@ -1,111 +1,13 @@
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
-import time
+import requests
+from bs4 import BeautifulSoup
 import json
 import os
-import platform
-import tempfile
 
 # 創建數據目錄
 DATA_DIR = "data"
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
 
-
-def setup_driver():
-    """設置並返回 webdriver（支援 CLI 無 GUI 環境）"""
-    is_mac_arm = platform.system() == 'Darwin' and platform.processor() == 'arm'
-
-    options = webdriver.ChromeOptions()
-
-    # 加入無頭瀏覽器設定
-    options.add_argument("--headless=new")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument('--disable-gpu')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--disable-blink-features=AutomationControlled')
-    options.add_argument('--disable-notifications')
-    options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
-
-    # 完全禁用 user-data-dir，使用臨時配置文件
-    options.add_argument("--incognito")  # 使用無痕模式
-    options.add_argument("--disable-application-cache")
-    options.add_argument("--disable-extensions")
-    options.add_argument("--disable-cookies")
-
-    # 自動忽略 Selenium 控制提示
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option('useAutomationExtension', False)
-
-    # 判斷 Docker 環境或 macOS M 系列
-    if os.path.exists('/.dockerenv'):
-        options.binary_location = "/usr/bin/chromium"
-    elif is_mac_arm:
-        options.binary_location = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-
-    # 建立 ChromeDriver service
-    service = Service()
-
-    try:
-        driver = webdriver.Chrome(service=service, options=options)
-
-        # 移除 webdriver 標記
-        driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
-            'source': '''
-                Object.defineProperty(navigator, 'webdriver', {
-                    get: () => undefined
-                })
-            '''
-        })
-
-        return driver
-    except Exception as e:
-        print(f"Error creating driver: {e}")
-        raise
-
-# def setup_driver():
-#     """設置並返回 webdriver"""
-#     # 檢測運行環境
-#     is_mac_arm = platform.system() == 'Darwin' and platform.processor() == 'arm'
-#     options = webdriver.ChromeOptions()
-    
-#     # 檢查是否在 Docker 環境中
-#     if os.path.exists('/.dockerenv'):
-#         options.binary_location = "/usr/bin/chromium"
-#     elif is_mac_arm:
-#         options.binary_location = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-
-#     # 加入無頭模式設置
-#     options.add_argument("--headless=new")
-#     options.add_argument("--window-size=1920,1080")
-#     options.add_argument('--disable-gpu')
-#     options.add_argument('--disable-blink-features=AutomationControlled')
-#     options.add_argument('--disable-notifications')
-#     options.add_argument('--no-sandbox')
-#     options.add_argument('--disable-dev-shm-usage')
-#     options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
-#     options.add_experimental_option("excludeSwitches", ["enable-automation"])
-#     options.add_experimental_option('useAutomationExtension', False)
-
-#     try:
-#         service = Service()
-#         driver = webdriver.Chrome(service=service, options=options)
-#         driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
-#             'source': '''
-#                 Object.defineProperty(navigator, 'webdriver', {
-#                     get: () => undefined
-#                 })
-#             '''
-#         })
-#         return driver
-#     except Exception as e:
-#         print(f"Error creating driver: {e}")
-#         raise
 
 def get_stock_data(index_name):
     """抓取指定指數的成分股數據"""
@@ -119,23 +21,29 @@ def get_stock_data(index_name):
         print(f"Invalid index name: {index_name}")
         return None
 
-    driver = setup_driver()
     stock_dict = {}
     try:
         url = urls[index_name]
         print(f"Accessing URL for {index_name}: {url}")
-        driver.get(url)
-        time.sleep(10)
-
-        # 等待表格加載
-        table = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.TAG_NAME, "table"))
-        )
         
-        # 獲取所有行
-        rows = table.find_elements(By.TAG_NAME, "tr")[1:]  # 跳過表頭
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        
+        response = requests.get(url, headers=headers, timeout=30)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        table = soup.find('table')
+        
+        if not table:
+            print(f"No table found for {index_name}")
+            return None
+        
+        # 獲取所有行（跳過表頭）
+        rows = table.find_all('tr')[1:]
         for row in rows:
-            cols = row.find_elements(By.TAG_NAME, "td")
+            cols = row.find_all('td')
             if len(cols) >= 3:  # 確保至少有公司名稱和代號欄位
                 company_name = cols[1].text.strip()
                 symbol = cols[2].text.strip()
@@ -147,8 +55,6 @@ def get_stock_data(index_name):
     except Exception as e:
         print(f"Error occurred while fetching {index_name} data: {str(e)}")
         return None
-    finally:
-        driver.quit()
 
 def save_stock_data(data, filename):
     """保存數據到文件"""

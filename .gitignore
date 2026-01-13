@@ -4,3 +4,4 @@ myenv/
 *.log
 data/node_modules/
 .wrangler/
+.DS_Store
