@@ -1,4 +1,4 @@
-source myenv/bin/activate
+source .venv/bin/activate
 
 python3 crawler-mops-individual.py
 python3 crawler-i18n.py
