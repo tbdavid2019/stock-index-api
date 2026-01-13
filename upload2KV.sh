@@ -11,8 +11,8 @@ python3 crawler-i18n.py
 pnpm install
 
 cd data && \
-pnpm wrangler kv key put --namespace-id=5e8e4092fd964584a2152c4a6f948d47 --remote "SP500" --path sp500_data.json && \
-pnpm wrangler kv key put --namespace-id=5e8e4092fd964584a2152c4a6f948d47 --remote "TW0050" --path fund_0050.json && \
-pnpm wrangler kv key put --namespace-id=5e8e4092fd964584a2152c4a6f948d47 --remote "TW0100" --path fund_0100.json && \
-pnpm wrangler kv key put --namespace-id=5e8e4092fd964584a2152c4a6f948d47 --remote "nasdaq100" --path nasdaq100_data.json && \
-pnpm wrangler kv key put --namespace-id=5e8e4092fd964584a2152c4a6f948d47 --remote "dowjones" --path dowjones_data.json
+pnpm wrangler kv key put SP500 --namespace-id=5e8e4092fd964584a2152c4a6f948d47 --path sp500_data.json --remote && \
+pnpm wrangler kv key put TW0050 --namespace-id=5e8e4092fd964584a2152c4a6f948d47 --path fund_0050.json --remote && \
+pnpm wrangler kv key put TW0100 --namespace-id=5e8e4092fd964584a2152c4a6f948d47 --path fund_0100.json --remote && \
+pnpm wrangler kv key put nasdaq100 --namespace-id=5e8e4092fd964584a2152c4a6f948d47 --path nasdaq100_data.json --remote && \
+pnpm wrangler kv key put dowjones --namespace-id=5e8e4092fd964584a2152c4a6f948d47 --path dowjones_data.json --remote
