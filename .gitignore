@@ -5,3 +5,4 @@ myenv/
 data/node_modules/
 .wrangler/
 .DS_Store
+david10.sh
