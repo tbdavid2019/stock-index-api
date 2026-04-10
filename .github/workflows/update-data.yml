@@ -19,6 +19,7 @@ jobs:
     timeout-minutes: 30
     env:
       TZ: Asia/Taipei
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_KV_NAMESPACE_ID: ${{ secrets.CLOUDFLARE_KV_NAMESPACE_ID }}
     steps:
@@ -49,6 +50,7 @@ jobs:
 
       - name: Validate required secrets
         run: |
+          test -n "${CLOUDFLARE_ACCOUNT_ID}"
           test -n "${CLOUDFLARE_API_TOKEN}"
           test -n "${CLOUDFLARE_KV_NAMESPACE_ID}"
 
