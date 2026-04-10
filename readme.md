@@ -66,13 +66,46 @@ python crawler-mops-individual.py
 
 ## 排程自動化
 
-### 設定 Cron Job
-```bash
-# 每季第一個月的第 5 天執行（基金持股資料通常延遲一季公布）
-0 2 5 1,4,7,10 * cd /path/to/stock-index-api && ./upload2KV.sh
-```
+### GitHub Actions 自動更新
 
-由於檔名固定，排程腳本**無需修改**即可自動抓取最新資料！
+專案已提供 GitHub Actions workflow：
+
+- 檔案位置：`.github/workflows/update-data.yml`
+- 排程時間：**台灣時間每天 04:30**
+- 執行內容：
+  1. 執行 `crawler-mops-individual.py`
+  2. 執行 `crawler-i18n.py`
+  3. 上傳 `data/*.json` 到 Cloudflare KV
+  4. 若 `data/` 內容有變更，自動 commit 並 push 回 repo
+
+GitHub Actions 的 cron 使用 UTC，因此 workflow 內設定為 `30 20 * * *`，對應台灣時間每日 04:30。
+
+### GitHub Secrets 設定
+
+請先在 GitHub repository settings 中設定以下 Secrets：
+
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_KV_NAMESPACE_ID`
+
+`CLOUDFLARE_API_TOKEN` 需要至少具備 Cloudflare Workers KV 的寫入權限。
+
+### 本機手動執行
+
+如仍需本機手動更新，可先安裝依賴後執行：
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+cd data
+npm ci
+cd ..
+
+export CLOUDFLARE_KV_NAMESPACE_ID=your_namespace_id
+export CLOUDFLARE_API_TOKEN=your_api_token
+bash ./upload2KV.sh
+```
 
 ## 自訂設定
 
@@ -100,7 +133,9 @@ FUND_NAME_MAPPING = {
 
 ### 上傳到 Cloudflare KV
 ```bash
-./upload2KV.sh
+export CLOUDFLARE_KV_NAMESPACE_ID=your_namespace_id
+export CLOUDFLARE_API_TOKEN=your_api_token
+bash ./upload2KV.sh
 ```
 
 這會：

@@ -1,18 +1,46 @@
-source .venv/bin/activate
+#!/usr/bin/env bash
+set -euo pipefail
 
-python3 crawler-mops-individual.py
-python3 crawler-i18n.py
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DATA_DIR="$ROOT_DIR/data"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
+KV_NAMESPACE_ID="${CLOUDFLARE_KV_NAMESPACE_ID:-}"
 
-# 原本找不到 wrangler 指令 → 使用 pnpm install 安裝
-# 新版 wrangler 語法改變 → 使用 pnpm wrangler kv key put 而非 wrangler kv:key put
-# 需要使用 --path 參數從檔案讀取內容
-# 需要加上 --remote 參數才會上傳到雲端而非本地
-# wrangler login
-# pnpm install
+if [[ -z "$KV_NAMESPACE_ID" ]]; then
+  echo "CLOUDFLARE_KV_NAMESPACE_ID is required." >&2
+  exit 1
+fi
 
-cd data && \
-pnpm wrangler kv key put SP500 --namespace-id=5e8e4092fd964584a2152c4a6f948d47 --path sp500_data.json --remote && \
-pnpm wrangler kv key put TW0050 --namespace-id=5e8e4092fd964584a2152c4a6f948d47 --path fund_0050.json --remote && \
-pnpm wrangler kv key put TW0100 --namespace-id=5e8e4092fd964584a2152c4a6f948d47 --path fund_0100.json --remote && \
-pnpm wrangler kv key put nasdaq100 --namespace-id=5e8e4092fd964584a2152c4a6f948d47 --path nasdaq100_data.json --remote && \
-pnpm wrangler kv key put dowjones --namespace-id=5e8e4092fd964584a2152c4a6f948d47 --path dowjones_data.json --remote
+if [[ -z "${GITHUB_ACTIONS:-}" && -z "${VIRTUAL_ENV:-}" && -f "$ROOT_DIR/.venv/bin/activate" ]]; then
+  # Use the local virtual environment automatically for manual runs.
+  # shellcheck disable=SC1091
+  source "$ROOT_DIR/.venv/bin/activate"
+fi
+
+cd "$ROOT_DIR"
+
+"$PYTHON_BIN" crawler-mops-individual.py
+"$PYTHON_BIN" crawler-i18n.py
+
+cd "$DATA_DIR"
+
+if [[ ! -d node_modules ]]; then
+  echo "Node.js dependencies are missing in $DATA_DIR. Run 'npm ci' in the data directory first." >&2
+  exit 1
+fi
+
+upload_json() {
+  local key="$1"
+  local file_path="$2"
+
+  npx wrangler kv key put "$key" \
+    --namespace-id="$KV_NAMESPACE_ID" \
+    --path "$file_path" \
+    --remote
+}
+
+upload_json "SP500" "sp500_data.json"
+upload_json "TW0050" "fund_0050.json"
+upload_json "TW0100" "fund_0100.json"
+upload_json "nasdaq100" "nasdaq100_data.json"
+upload_json "dowjones" "dowjones_data.json"
