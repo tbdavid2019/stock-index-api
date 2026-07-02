@@ -5,6 +5,7 @@
   "MSFT": "Microsoft Corp",
   "AMGN": "Amgen Inc",
   "V": "Visa Inc",
+  "GOOGL": "Alphabet",
   "HD": "Home Depot Inc/The",
   "AXP": "American Express Co",
   "SHW": "Sherwin-Williams Co/The",
@@ -27,6 +28,5 @@
   "WMT": "Walmart Inc",
   "DIS": "Walt Disney Co/The",
   "KO": "Coca-Cola Co/The",
-  "NKE": "NIKE Inc",
-  "VZ": "Verizon Communications Inc"
+  "NKE": "NIKE Inc"
 }
