@@ -13,8 +13,8 @@
   "AAPL": "Apple Inc.",
   "HD": "Home Depot, Inc.",
   "JNJ": "Johnson & Johnson",
-  "MCD": "McDonald's Corporation",
   "CRM": "Salesforce, Inc.",
+  "MCD": "McDonald's Corporation",
   "AMZN": "Amazon.Com Inc",
   "IBM": "International Business Machines Corporation",
   "NVDA": "Nvidia Corp",
@@ -25,8 +25,8 @@
   "MRK": "Merck & Co., Inc.",
   "PG": "Procter & Gamble Company",
   "CSCO": "Cisco Systems, Inc. Common Stock (DE)",
-  "DIS": "The Walt Disney Company",
   "WMT": "Walmart Inc. Common Stock",
+  "DIS": "The Walt Disney Company",
   "KO": "Coca-Cola Company",
   "NKE": "Nike, Inc."
 }
