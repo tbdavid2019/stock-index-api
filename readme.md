@@ -1,13 +1,14 @@
 # Stock Index API
 
-提供台灣股市指數成分股與基金持股資料的 API 服務。
+提供台灣股市指數、美股主要指數與日股日經 225（Nikkei 225）成分股及台灣 ETF 基金持股資料的 API 服務。
 
 ## 功能
 
-### 1. 國際指數成分股
-- S&P 500
-- NASDAQ 100  
-- Dow Jones
+### 1. 國際與跨市場指數成分股
+- **S&P 500**（自動涵蓋前沿科技與太空概念股如 SPCX, DXYZ, ASTS, RKLB, CRWV, FN, CLS）
+- **NASDAQ 100**
+- **Dow Jones (道瓊工業指數)**
+- **日經 225 (Nikkei 225 / N225 / JP225)**：東京證券交易所 225 檔核心龍頭成分股（如 8035.T Tokyo Electron, 9984.T SoftBank Group, 6857.T Advantest, 6146.T Disco, 4063.T Shin-Etsu 等），具備 Wikipedia 線上解析與 225 檔完整內嵌備援。
 
 ### 2. 台灣 ETF 基金持股
 從公開資訊觀測站 (MOPS) 抓取基金每季持股明細，**自動偵測最新季度**。
@@ -40,36 +41,38 @@ source myenv/bin/activate
 python crawler-mops-individual.py
 ```
 
-**自動偵測最新季度**：
-- 腳本會根據當前日期自動計算最新可用的季度（延遲一季公布）
-- 例如：2026年1月執行 → 自動抓取 2025 Q4 資料
-- 檔名固定，每次執行會覆蓋舊資料
+### 抓取國際與日股指數成分股
+```bash
+source myenv/bin/activate
+python crawler-i18n.py
+```
 
 執行後會在 `data/` 目錄下生成：
-- `fund_0050.json` - 0050 持股明細（最新季度）
-- `fund_0100.json` - 0100 持股明細（最新季度）
+- `sp500_data.json` - S&P 500 成分股（含 Frontier 概念股）
+- `nasdaq100_data.json` - NASDAQ 100 成分股
+- `dowjones_data.json` - 道瓊工業指數成分股
+- `nikkei225_data.json` - 日經 225 指數成分股（完整 225 檔）
+- `fund_0050.json` - 0050 持股明細
+- `fund_0100.json` - 0100 持股明細
 - `fund_*.json` - 其他基金持股明細
 - `funds_summary.json` - 所有基金摘要
 
 ### 資料格式
-**與 SP500/NASDAQ100 格式完全一致**：
+與現有各指數 API 格式完全一致：
 ```json
 {
-  "2330": "台積電",
-  "2881": "富邦金",
-  "2882": "國泰金",
-  "1301": "台塑"
+  "8035.T": "Tokyo Electron",
+  "9984.T": "SoftBank Group",
+  "AAPL": "Apple Inc.",
+  "2330": "台積電"
 }
 ```
-
-*註：簡單的 `{"股票代號": "股票名稱"}` 格式，與現有 API 完全相容*
 
 ## 排程自動化
 
 ### GitHub Actions 自動更新
 
 專案已提供 GitHub Actions workflow：
-
 - 檔案位置：`.github/workflows/update-data.yml`
 - 排程時間：**台灣時間每天 04:30**
 - 執行內容：
@@ -78,22 +81,13 @@ python crawler-mops-individual.py
   3. 上傳 `data/*.json` 到 Cloudflare KV
   4. 若 `data/` 內容有變更，自動 commit 並 push 回 repo
 
-GitHub Actions 的 cron 使用 UTC，因此 workflow 內設定為 `30 20 * * *`，對應台灣時間每日 04:30。
-
 ### GitHub Secrets 設定
-
 請先在 GitHub repository settings 中設定以下 Secrets：
-
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_KV_NAMESPACE_ID`
 
-`CLOUDFLARE_API_TOKEN` 需要至少具備 Cloudflare Workers KV 的寫入權限。
-
 ### 本機手動執行
-
-如仍需本機手動更新，可先安裝依賴後執行：
-
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
@@ -108,71 +102,53 @@ export CLOUDFLARE_API_TOKEN=your_api_token
 bash ./upload2KV.sh
 ```
 
-## 自訂設定
+## Cloudflare KV 映射鍵值
 
-### 手動指定季度
-編輯 `crawler-mops-individual.py` 最後幾行：
+透過 `upload2KV.sh` 同步發布以下鍵值至 Cloudflare Workers KV：
+- `SP500` -> `sp500_data.json`
+- `nasdaq100` -> `nasdaq100_data.json`
+- `dowjones` -> `dowjones_data.json`
+- `NIKKEI225` -> `nikkei225_data.json`
+- `N225` -> `nikkei225_data.json`
+- `JP225` -> `nikkei225_data.json`
+- `TW0050` -> `fund_0050.json`
+- `TW0100` -> `fund_0100.json`
 
-```python
-# 取消註解並修改：
-roc_year = 115  # 民國年
-season = 1      # 季度 (1-4)
-```
+## API 端點 (FastAPI)
 
-### 新增基金映射
-編輯 `FUND_NAME_MAPPING` 字典以使用股票代碼作為檔名：
-
-```python
-FUND_NAME_MAPPING = {
-    '元大台灣卓越50': '0050',
-    '元大台灣中型100': '0100',
-    '你的基金名稱': '股票代碼',
-}
-```
-
-## 部署與上傳
-
-### 上傳到 Cloudflare KV
+啟動 API 伺服器：
 ```bash
-export CLOUDFLARE_KV_NAMESPACE_ID=your_namespace_id
-export CLOUDFLARE_API_TOKEN=your_api_token
-bash ./upload2KV.sh
+uvicorn app:app --reload --port 8000
 ```
 
-這會：
-1. 抓取最新資料（自動偵測季度）
-2. 上傳到 Cloudflare KV Storage
-
-## API 端點
-
-- `GET /api/sp500` - S&P 500 成分股
-- `GET /api/nasdaq100` - NASDAQ 100 成分股
-- `GET /api/dowjones` - Dow Jones 成分股
-- `GET /api/0050` - 元大台灣卓越50 持股
-- `GET /api/0100` - 元大台灣中型100 持股
-
-## 注意事項
-
-1. **SSL 證書**：MOPS 網站證書有問題，程式中使用 `verify=False`
-2. **更新頻率**：基金持股每季更新一次
-3. **資料來源**：公開資訊觀測站 (https://mopsov.twse.com.tw)
-4. **檔名固定**：每次執行覆蓋舊檔案，方便排程自動化
-5. **資料清洗**：自動過濾「小計」、「總計」等統計行
+主要端點：
+- `GET /` - API 狀態與端點指引
+- `GET /indices` - 獲取所有市場與指數列表（`TW`, `US`, `JP`）
+- `GET /stocks/{index_name}` - 獲取指定指數成分股（支援 `SP500`, `NASDAQ100`, `DOWJONES`, `NIKKEI225`, `N225`, `JP225`, `0050`, `0100`）
+- `GET /stock/{stock_code}` - 依股票代號查詢（支援台股代號、美股代號、日股代號如 `8035` 或 `8035.T`）
+- `GET /search/{company_name}` - 依公司名稱模糊搜尋跨市場成分股
+- `GET /market/{market}` - 獲取指定市場（`TW`, `US`, `JP`）的所有指數成分股
 
 ## 專案結構
 ```
 .
-├── app.py                          # Flask API 主程式
+├── app.py                          # FastAPI 主程式
 ├── crawler-mops-individual.py      # MOPS 基金持股爬蟲（自動偵測最新季度）
-├── crawler-i18n.py                 # 國際指數爬蟲
-├── upload2KV.sh                    # 上傳腳本
+├── crawler-i18n.py                 # 國際與日經指數爬蟲（含 Frontier 概念股擴充）
+├── upload2KV.sh                    # Cloudflare KV 上傳腳本
 ├── data/                           # 資料目錄
+│   ├── sp500_data.json
+│   ├── nasdaq100_data.json
+│   ├── dowjones_data.json
+│   ├── nikkei225_data.json        # 日經 225 成分股
 │   ├── fund_0050.json             # 固定檔名，自動更新
 │   ├── fund_0100.json
 │   └── funds_summary.json
 └── requirements.txt
 ```
 
-## 貢獻
+## 注意事項
 
-歡迎提交 PR 新增更多基金映射或改進爬蟲邏輯！
+1. **SSL 證書**：MOPS 網站證書有問題，程式中使用 `verify=False`。
+2. **容錯機制**：日經 225 爬蟲內嵌 225 檔完整備援清單，若 Wikipedia 頁面改版或網路超時自動平滑降級。
+3. **無硬編碼金鑰**：所有金鑰憑證均透過環境變數注入，嚴禁硬編碼。

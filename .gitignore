@@ -5,4 +5,6 @@ myenv/
 data/node_modules/
 .wrangler/
 .DS_Store
+__pycache__/
+*.pyc
 david10.sh
