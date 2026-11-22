@@ -48,6 +48,7 @@
   "REGN": "Regeneron Pharmaceuticals Inc",
   "FTNT": "Fortinet, Inc.",
   "CSX": "CSX Corporation",
+  "SNDK": "Sandisk Corporation Common Stock",
   "CMCSA": "Comcast Corp",
   "CTAS": "Cintas Corp",
   "MNST": "Monster Beverage Corporation",
@@ -98,6 +99,5 @@
   "NBIS": "Nebius Group N.V. Class A Ordinary Shares",
   "AXON": "Axon Enterprise, Inc. Common Stock",
   "CRWV": "CoreWeave, Inc. Class A Common Stock",
-  "ALNY": "Alnylam Pharmaceuticals, Inc.",
-  "SNDK": "Sandisk Corporation Common Stock"
+  "ALNY": "Alnylam Pharmaceuticals, Inc."
 }
